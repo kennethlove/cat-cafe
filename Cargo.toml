@@ -1,0 +1,14 @@
+[package]
+name = "cat-cafe"
+version = "0.1.0"
+authors = ["Kenneth Love <11908+kennethlove@users.noreply.github.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0.197", features = ["derive"] }
+tokio = {version = "1.41.0", features = ["full"]}
+surrealdb = { version = "2.0.4", features = ["kv-mem"] }
+axum = { version = "0.7.7",  features=["macros"]}
+uuid = { version = "1.11.0", features = ["serde", "v4"] }
