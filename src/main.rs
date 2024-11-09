@@ -135,7 +135,7 @@ async fn update_cat(
     match id {
         None => (StatusCode::NOT_FOUND, Json(None)),
         _ => {
-            let cat: Option<Cat> = DB.update(id.unwrap()).merge(NewCat {
+            let cat: Option<Cat> = DB.update(id.unwrap()).content(NewCat {
                 identifier: Some(uuid),
                 name: payload.name.clone(),
                 breed: payload.breed.clone(),
