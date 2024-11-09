@@ -5,7 +5,7 @@ name = "cat-cafe"
 
 # Dioxus App Default Platform
 # web, desktop, fullstack
-default_platform = "fullstack"
+default_platform = "web"
 
 # `build` & `serve` dist path
 out_dir = "dist"
