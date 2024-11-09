@@ -86,7 +86,6 @@ async fn get_cats() -> (StatusCode, Json<Vec<Cat>>) {
 }
 
 async fn get_cat(Path(uuid): Path<Uuid>) -> Result<impl IntoResponse, StatusCode> {
-// async fn get_cat(Path(uuid): Path<Uuid>) -> (StatusCode, Json<Option<Cat>>) {
     let mut response= DB
         .query("SELECT * FROM cat WHERE identifier = $uuid")
         .bind(("uuid", uuid))
