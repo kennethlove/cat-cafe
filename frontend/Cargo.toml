@@ -1,0 +1,20 @@
+[package]
+name = "frontend"
+version = "0.1.0"
+authors = ["Kenneth Love <11908+kennethlove@users.noreply.github.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dioxus = { version = "0.5", features = ["web", "router"] }
+reqwest = {version = "0.12.9", features = ["json", "blocking"]}
+serde = { version = "1.0.197", features = ["derive"] }
+uuid = { version = "1.11.0", features = ["serde", "v4", "js"] }
+
+shared = { path = "../shared" }
+
+# Debug
+console_error_panic_hook = "0.1.7"
+dioxus-logger = "0.5.1"
+wasm-logger = "0.2.0"

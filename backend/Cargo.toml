@@ -1,0 +1,20 @@
+[package]
+name = "backend"
+version = "0.1.0"
+authors = ["Kenneth Love <11908+kennethlove@users.noreply.github.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = { version = "0.7.7", features = ["macros"] }
+serde = { version = "1.0.197", features = ["derive"] }
+surrealdb = { version = "2.0.4", features = ["kv-mem"] }
+tokio = { version = "1.41.0", features = ["full"] }
+tower = { version = "0.5.1", features = ["util", "timeout"] }
+tower-http = { version = "0.6.1", features = ["add-extension", "trace"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+uuid = { version = "1.11.0", features = ["serde", "v4", "js"] }
+
+shared = { path = "../shared" }

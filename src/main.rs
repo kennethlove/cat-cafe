@@ -1,169 +1,76 @@
-use axum::{extract::Path, routing::get, http::StatusCode, Json, Router, BoxError};
-use serde::{Deserialize, Serialize};
-use std::sync::LazyLock;
-use std::time::Duration;
-use axum::error_handling::HandleErrorLayer;
-use axum::response::IntoResponse;
-use surrealdb::engine::remote::ws::{Client, Ws};
-use surrealdb::opt::auth::Root;
-use surrealdb::{RecordId, Surreal};
-use surrealdb::sql::Uuid;
-use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+#![allow(non_snake_case)]
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-struct Cat {
-    id: RecordId,
-    identifier: Uuid,
-    name: String,
-    breed: String,
+use dioxus::prelude::*;
+use dioxus_logger::tracing;
+
+#[derive(Clone, Routable, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+enum Route {
+    #[route("/")]
+    Home {},
+    #[route("/blog/:id")]
+    Blog { id: i32 },
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-struct NewCat {
-    identifier: Option<Uuid>,
-    name: String,
-    breed: String,
+fn main() {
+    // Init logger
+    dioxus_logger::init(tracing::Level::INFO).expect("failed to init logger");
+    tracing::info!("starting app");
+    launch(App);
 }
 
-static DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
+fn App() -> Element {
+    rsx! {
+        Router::<Route> {}
+    }
+}
 
-#[tokio::main]
-async fn main() {
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                format!("{}=debug,tower_http=debug", env!("CARGO_CRATE_NAME")).into()
-            }),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+#[component]
+fn Blog(id: i32) -> Element {
+    rsx! {
+        Link { to: Route::Home {}, "Go to counter" }
+        "Blog post {id}"
+    }
+}
 
-    DB.connect::<Ws>("localhost:8000").await.unwrap();
-    tracing::debug!("connected to surrealdb");
-    DB.signin(Root {
-        username: "root",
-        password: "root",
-    }).await.unwrap();
-    tracing::debug!("authenticated with surrealdb");
-    DB.use_ns("cat-cafe").use_db("cats").await.unwrap();
+#[component]
+fn Home() -> Element {
+    let mut count = use_signal(|| 0);
+    let mut text = use_signal(|| String::from("..."));
 
-    let app = Router::new()
-        .route("/", get(root))
-        .route("/cats", get(get_cats).post(create_cat))
-        .route("/cats/:uuid", get(get_cat).delete(delete_cat).put(update_cat))
-        .layer(
-            ServiceBuilder::new()
-                .layer(HandleErrorLayer::new(|error: BoxError| async move {
-                    if error.is::<tower::timeout::error::Elapsed>() {
-                        Ok(StatusCode::REQUEST_TIMEOUT)
-                    } else {
-                        Err((
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            format!("Unhandled internal error: {error}"),
-                        ))
+    rsx! {
+        Link {
+            to: Route::Blog {
+                id: count()
+            },
+            "Go to blog"
+        }
+        div {
+            h1 { "High-Five counter: {count}" }
+            button { onclick: move |_| count += 1, "Up high!" }
+            button { onclick: move |_| count -= 1, "Down low!" }
+            button {
+                onclick: move |_| async move {
+                    if let Ok(data) = get_server_data().await {
+                        tracing::info!("Client received: {}", data);
+                        text.set(data.clone());
+                        post_server_data(data).await.unwrap();
                     }
-                }))
-                .timeout(Duration::from_secs(10))
-                .layer(TraceLayer::new_for_http())
-                .into_inner()
-        );
-
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    tracing::debug!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app).await.unwrap();
-}
-
-async fn get_cats() -> (StatusCode, Json<Vec<Cat>>) {
-    match DB.select("cat").await {
-        Ok(cats) => (StatusCode::OK, Json(cats)),
-        Err(e) => {
-            eprintln!("{:?}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(vec![]))
+                },
+                "Get Server Data"
+            }
+            p { "Server data: {text}"}
         }
     }
 }
 
-async fn get_cat(Path(uuid): Path<Uuid>) -> Result<impl IntoResponse, StatusCode> {
-    let mut response= DB
-        .query("SELECT * FROM cat WHERE identifier = $uuid")
-        .bind(("uuid", uuid))
-        .await.unwrap();
-    let id: Option<RecordId> = response.take("id").unwrap();
-    let name: Option<String> = response.take("name").unwrap();
-    let breed: Option<String> = response.take("breed").unwrap();
-
-    match id {
-        None => Err(StatusCode::NOT_FOUND),
-        _ => {
-            let cat = Cat {
-                id: id.unwrap(),
-                identifier: uuid,
-                name: name.unwrap(),
-                breed: breed.unwrap(),
-            };
-            Ok((StatusCode::OK, Json(Some(cat))))
-        }
-    }
+#[server(PostServerData)]
+async fn post_server_data(data: String) -> Result<(), ServerFnError> {
+    tracing::info!("Server received: {}", data);
+    Ok(())
 }
 
-async fn create_cat(
-    Json(payload): Json<NewCat>,
-) -> (StatusCode, Json<Cat>) {
-    let identifier = Uuid::new_v4();
-    let cat: Option<Cat> = DB
-        .create("cat")
-        .content(NewCat {
-            identifier: Some(identifier),
-            name: payload.name.clone(),
-            breed: payload.breed.clone(),
-        })
-        .await.unwrap();
-    (StatusCode::CREATED, Json(cat.unwrap()))
-}
+#[server(GetServerData)]
+async fn get_server_data() -> Result<String, ServerFnError> {
 
-async fn update_cat(
-    Path(uuid): Path<Uuid>,
-    Json(payload): Json<NewCat>,
-) -> (StatusCode, Json<Option<Cat>>) {
-    let mut response= DB
-        .query("SELECT * FROM cat WHERE identifier = $uuid")
-        .bind(("uuid", uuid))
-        .await.unwrap();
-    let id: Option<RecordId> = response.take("id").unwrap();
-    match id {
-        None => (StatusCode::NOT_FOUND, Json(None)),
-        _ => {
-            let cat: Option<Cat> = DB.update(id.unwrap()).content(NewCat {
-                identifier: Some(uuid),
-                name: payload.name.clone(),
-                breed: payload.breed.clone(),
-            }).await.unwrap();
-
-            (StatusCode::OK, Json(Some(cat.unwrap())))
-        }
-    }
-}
-
-async fn delete_cat(Path(uuid): Path<Uuid>) -> StatusCode {
-    let mut response= DB
-        .query("SELECT * FROM cat WHERE identifier = $uuid")
-        .bind(("uuid", uuid))
-        .await.unwrap();
-    let id: Option<RecordId> = response.take("id").unwrap();
-    match id {
-        None => { StatusCode::NO_CONTENT }
-        _ => {
-            let id: RecordId = id.unwrap();
-            let split_id: Vec<String> = id.to_string().split(':').map(String::from).collect();
-
-            let _:Option<Cat> = DB.delete((split_id[0].clone(), split_id[1].clone())).await.unwrap();
-            StatusCode::NO_CONTENT
-        }
-    }
-}
-
-async fn root() -> &'static str {
-    "Hello World!"
+    Ok("Hello from the server!".to_string())
 }
