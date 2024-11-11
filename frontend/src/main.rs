@@ -83,8 +83,6 @@ fn Footer() -> Element {
 
 #[component]
 fn Home() -> Element {
-    let state = use_context::<Signal<AppState>>();
-
     rsx! {
         div {
             h1 { "High-Five counter: {state.read().count}" }

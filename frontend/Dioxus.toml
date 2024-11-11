@@ -1,7 +1,7 @@
 [application]
 
 # App (Project) Name
-name = "cat-cafe"
+name = "cat_cafe"
 
 # Dioxus App Default Platform
 # web, desktop, fullstack
@@ -16,7 +16,7 @@ asset_dir = "assets"
 [web.app]
 
 # HTML title tag content
-title = "cat-cafe"
+title = "Cat Cafe"
 
 [web.watcher]
 index_on_404 = true

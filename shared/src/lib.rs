@@ -4,7 +4,7 @@ use surrealdb::sql::Uuid;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Cat {
-    // pub id: RecordId,
+    pub id: RecordId,
     pub identifier: Uuid,
     pub name: String,
     pub breed: String,
