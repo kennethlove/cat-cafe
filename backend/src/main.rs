@@ -1,16 +1,15 @@
 use axum::error_handling::HandleErrorLayer;
 use axum::response::IntoResponse;
 use axum::{extract::Path, http::StatusCode, routing::get, BoxError, Json, Router};
-use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
 use std::time::Duration;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
-use surrealdb::sql::Uuid;
 use surrealdb::{RecordId, Surreal};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use uuid::Uuid;
 
 use shared::{Cat, NewCat};
 
@@ -80,19 +79,20 @@ async fn get_cats() -> Result<impl IntoResponse, StatusCode> {
 async fn get_cat(Path(uuid): Path<Uuid>) -> Result<impl IntoResponse, StatusCode> {
     let mut response = DB
         .query("SELECT * FROM cat WHERE identifier = $uuid")
-        .bind(("uuid", uuid))
+        .bind(("uuid", uuid.to_string()))
         .await
         .unwrap();
     let id: Option<RecordId> = response.take("id").unwrap();
+    let identifier: Option<String> = response.take("identifier").unwrap();
     let name: Option<String> = response.take("name").unwrap();
     let breed: Option<String> = response.take("breed").unwrap();
 
     match id {
         None => Err(StatusCode::NOT_FOUND),
-        _ => {
+        Some(_) => {
             let cat = Cat {
-                id: id.unwrap(),
-                identifier: uuid,
+                // id: id.unwrap().parse().unwrap(),
+                identifier: identifier.unwrap(),
                 name: name.unwrap(),
                 breed: breed.unwrap(),
             };
@@ -106,7 +106,7 @@ async fn create_cat(Json(payload): Json<NewCat>) -> Result<impl IntoResponse, St
     let cat: Option<Cat> = DB
         .create("cat")
         .content(NewCat {
-            identifier: Some(identifier),
+            identifier: Some(identifier.to_string()),
             name: payload.name.clone(),
             breed: payload.breed.clone(),
         })
@@ -121,24 +121,25 @@ async fn update_cat(
 ) -> Result<impl IntoResponse, StatusCode> {
     let mut response = DB
         .query("SELECT * FROM cat WHERE identifier = $uuid")
-        .bind(("uuid", uuid))
+        .bind(("uuid", uuid.to_string()))
         .await
         .unwrap();
     let id: Option<RecordId> = response.take("id").unwrap();
+    let identifier: Option<String> = response.take("identifier").unwrap();
     match id {
         None => Err(StatusCode::NOT_FOUND),
-        _ => {
+        Some(id) => {
             let cat: Option<Cat> = DB
-                .update(id.unwrap())
+                .update(id)
                 .content(NewCat {
-                    identifier: Some(uuid),
+                    identifier: identifier.clone(),
                     name: payload.name.clone(),
                     breed: payload.breed.clone(),
                 })
                 .await
                 .unwrap();
 
-            Ok((StatusCode::OK, Json(Some(cat.unwrap()))))
+            Ok((StatusCode::OK, Json(Some(cat))))
         }
     }
 }
@@ -146,18 +147,16 @@ async fn update_cat(
 async fn delete_cat(Path(uuid): Path<Uuid>) -> StatusCode {
     let mut response = DB
         .query("SELECT * FROM cat WHERE identifier = $uuid")
-        .bind(("uuid", uuid))
+        .bind(("uuid", uuid.to_string()))
         .await
         .unwrap();
     let id: Option<RecordId> = response.take("id").unwrap();
+
     match id {
         None => StatusCode::NO_CONTENT,
-        _ => {
-            let id: RecordId = id.unwrap();
-            let split_id: Vec<String> = id.to_string().split(':').map(String::from).collect();
-
+        Some(id) => {
             let _: Option<Cat> = DB
-                .delete((split_id[0].clone(), split_id[1].clone()))
+                .delete(id)
                 .await
                 .unwrap();
             StatusCode::NO_CONTENT

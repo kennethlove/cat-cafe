@@ -8,7 +8,8 @@ edition = "2021"
 
 [dependencies]
 serde = { version = "1.0.197", features = ["derive"] }
-surrealdb = { version = "2.0.4", features = ["kv-mem"] }
+surrealdb = { version = "2.0.4", features = ["default"] }
+tokio = { version = "1.41.0", features = ["macros"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 uuid = { version = "1.11.0", features = ["serde", "v4", "js"] }
