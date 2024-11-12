@@ -17,4 +17,7 @@ pub use cats::*;
 mod cat_list;
 pub use cat_list::*;
 mod cat_detail;
+mod navbar;
+pub use navbar::*;
+
 pub use cat_detail::*;

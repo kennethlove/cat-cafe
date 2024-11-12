@@ -4,7 +4,10 @@ use crate::routes::Routes;
 pub fn Cats() -> Element {
     rsx! {
         div {
-            h1 { "Cats" }
+            h1 {
+                class: "text-2xl font-bold",
+                "Cats"
+            }
             Outlet::<Routes> {}
         }
     }

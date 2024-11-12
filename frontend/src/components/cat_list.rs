@@ -15,18 +15,28 @@ pub fn CatList() -> Element {
     if cats.is_none() {
         return rsx! {
             div {
-                h2 { "Loading cats..." }
+                h2 {
+                    class: "text-2xl font-bold text-yellow-800 dark:text-yellow-800 tracking-wider",
+                    "Loading cats..."
+                }
             }
         };
     }
     rsx! {
         div {
-            h2 { "Pick a cat" }
+            h2 {
+                class: "text-2xl font-bold text-yellow-800 dark:text-yellow-800 tracking-wider",
+                "Pick a cat"
+            }
             ul {
                 for cat in cats.unwrap() {
                     li {
+                        class: "text-lg font-bold text-yellow-800 dark:text-yellow-800 tracking-wider",
                         Link { to: Routes::CatDetail { id: Uuid::parse_str(cat.clone().identifier.as_str()).unwrap() }, "{cat.name}" }
-                        {cat.breed.clone()}
+                        span {
+                            class: "text-sm text-yellow-800 dark:text-yellow-800 tracking-wider",
+                            " - {cat.breed}"
+                        }
                     }
                 }
             }
