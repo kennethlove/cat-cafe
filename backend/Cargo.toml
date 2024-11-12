@@ -12,7 +12,7 @@ serde = { version = "1.0.197", features = ["derive"] }
 surrealdb = { version = "2.0.4", features = ["kv-mem"] }
 tokio = { version = "1.41.0", features = ["macros", "rt-multi-thread"] }
 tower = { version = "0.5.1", features = ["util", "timeout"] }
-tower-http = { version = "0.6.1", features = ["add-extension", "trace"] }
+tower-http = { version = "0.6.1", features = ["add-extension", "trace", "cors"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 uuid = { version = "1.11.0", features = ["serde", "v4", "js"] }

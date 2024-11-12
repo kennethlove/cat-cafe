@@ -3,10 +3,12 @@ use axum::response::IntoResponse;
 use axum::{extract::Path, http::StatusCode, routing::get, BoxError, Json, Router};
 use std::sync::LazyLock;
 use std::time::Duration;
+use axum::http::HeaderValue;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
 use surrealdb::{RecordId, Surreal};
 use tower::ServiceBuilder;
+use tower_http::cors::{CorsLayer, AllowOrigin, AllowMethods};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
@@ -37,6 +39,15 @@ async fn main() {
     tracing::debug!("authenticated with surrealdb");
     DB.use_ns("cat-cafe").use_db("cats").await.unwrap();
 
+    let cors_layer = CorsLayer::new()
+        .allow_origin(AllowOrigin::exact("http://localhost:8080".parse().unwrap()))
+        .allow_methods(vec![
+            "GET".parse().unwrap(),
+            "POST".parse().unwrap(),
+            "PUT".parse().unwrap(),
+            "DELETE".parse().unwrap(),
+        ]);
+
     let app = Router::new()
         .route("/", get(root))
         .route("/cats", get(get_cats).post(create_cat))
@@ -58,6 +69,7 @@ async fn main() {
                 }))
                 .timeout(Duration::from_secs(10))
                 .layer(TraceLayer::new_for_http())
+                .layer(cors_layer)
                 .into_inner(),
         );
 
@@ -65,6 +77,7 @@ async fn main() {
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
 }
+
 
 async fn get_cats() -> Result<impl IntoResponse, StatusCode> {
     match DB.select("cat").await {

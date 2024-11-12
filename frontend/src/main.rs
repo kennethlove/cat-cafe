@@ -1,8 +1,9 @@
 #![allow(non_snake_case)]
+
 use dioxus::prelude::*;
-use dioxus_logger::tracing::{debug, Level};
-use dioxus_router::prelude::*;
-// use shared::Cat;
+use dioxus_logger::tracing::Level;
+use uuid::Uuid;
+use shared::Cat;
 
 fn main() {
     dioxus_logger::init(Level::INFO).expect("failed to init logger");
@@ -12,40 +13,37 @@ fn main() {
     launch(App);
 }
 
+#[derive(Clone, Debug)]
 struct AppState {
     count: i32,
     text: String,
-    // cats: Vec<Cat>,
+    cats: Signal<Vec<Cat>>,
 }
 
 impl AppState {
-    async fn new() -> Self {
-        // let cats = match reqwest::Client::new()
-        //     .get("http://localhost:3000/cats")
-        //     .send()
-        //     .await
-        // {
-        //     Ok(res) => {
-        //         println!("{:?}", res);
-        //     },
-        //     Err(e) => {
-        //         eprintln!("{:?}", e);
-        //     }
-        // };
+    fn new() -> Self {
+        let cats = use_signal(|| async move {
+            reqwest::get("http://localhost:3000/cats")
+                .await
+                .unwrap()
+                .json::<Vec<Cat>>()
+                .await
+        });
+
+        dioxus_logger::tracing::info!("cats: {:?}", cats);
 
         Self {
             count: 0,
-            text: String::from("..."),
-            // cats
+            text: String::from("loading cats"),
+            cats,
         }
     }
 }
 
 #[component]
 fn App() -> Element {
-    debug!("starting app");
-    use_context_provider(|| Signal::new(AppState::new()));
-
+    let state = AppState::new();
+    use_context_provider(|| state);
 
     rsx! {
         Router::<Routes> {}
@@ -83,9 +81,14 @@ fn Footer() -> Element {
 
 #[component]
 fn Home() -> Element {
+    let state = use_context::<AppState>();
     rsx! {
         div {
-            h1 { "High-Five counter: {state.read().count}" }
+            h1 { "Home" }
+            p { "Welcome to Dioxus!" }
+            p { "Count: {state.count}" }
+            p { "Text: {state.text}" }
+            p { "Cats: {state.cats:?}" }
         }
     }
 }
@@ -143,7 +146,7 @@ fn Cats() -> Element {
 }
 
 #[component]
-fn CatDetail(id: i32) -> Element {
+fn CatDetail(id: Uuid) -> Element {
     rsx! {
         div {
             h2 { "Cat {id}" }
@@ -153,15 +156,17 @@ fn CatDetail(id: i32) -> Element {
 
 #[component]
 fn CatList() -> Element {
+    let state = use_context::<AppState>();
+    dioxus_logger::tracing::info!("cats: {:?}", state.cats);
     rsx! {
         div {
             h2 { "Pick a cat" }
             ul {
-                li {
-                    Link { to: Routes::CatDetail { id: 1 }, "Cat 1" }
-                }
-                li {
-                    Link { to: Routes::CatDetail { id: 2 }, "Cat 2" }
+                for cat in state.cats.iter() {
+                    li {
+                        Link { to: Routes::CatDetail { id: Uuid::parse_str(cat.clone().identifier.as_str()).unwrap() }, "{cat.name}" }
+                        {cat.breed.clone()}
+                    }
                 }
             }
         }
@@ -181,7 +186,7 @@ enum Routes {
                 #[route("/")]
                 CatList {},
                 #[route("/:id")]
-                CatDetail { id: i32 },
+                CatDetail { id: Uuid },
             #[end_layout]
         #[end_nest]
     #[end_layout]
