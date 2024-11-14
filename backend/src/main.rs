@@ -1,14 +1,17 @@
+use std::fs::File;
+use std::io::Write;
 use axum::error_handling::HandleErrorLayer;
 use axum::response::IntoResponse;
 use axum::{extract::Path, http::StatusCode, routing::get, BoxError, Json, Router};
 use std::sync::LazyLock;
 use std::time::Duration;
-use axum::http::HeaderValue;
+use axum::extract::Multipart;
+use axum::routing::post;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
 use surrealdb::{RecordId, Surreal};
 use tower::ServiceBuilder;
-use tower_http::cors::{CorsLayer, AllowOrigin, AllowMethods};
+use tower_http::cors::{CorsLayer, AllowOrigin};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
@@ -41,6 +44,7 @@ async fn main() {
 
     let cors_layer = CorsLayer::new()
         .allow_origin(AllowOrigin::exact("http://localhost:8080".parse().unwrap()))
+        .allow_headers(vec!["content-type".parse().unwrap()])
         .allow_methods(vec![
             "GET".parse().unwrap(),
             "POST".parse().unwrap(),
@@ -55,6 +59,7 @@ async fn main() {
             "/cats/:uuid",
             get(get_cat).delete(delete_cat).put(update_cat),
         )
+        .route("/cats/:uuid/images", post(upload_image))
         .layer(
             ServiceBuilder::new()
                 .layer(HandleErrorLayer::new(|error: BoxError| async move {
@@ -91,27 +96,13 @@ async fn get_cats() -> Result<impl IntoResponse, StatusCode> {
 
 async fn get_cat(Path(uuid): Path<Uuid>) -> Result<impl IntoResponse, StatusCode> {
     let mut response = DB
-        .query("SELECT * FROM cat WHERE identifier = $uuid")
+        .query("SELECT * FROM cat WHERE identifier = $uuid LIMIT 1")
         .bind(("uuid", uuid.to_string()))
         .await
         .unwrap();
-    let id: Option<RecordId> = response.take("id").unwrap();
-    let identifier: Option<String> = response.take("identifier").unwrap();
-    let name: Option<String> = response.take("name").unwrap();
-    let breed: Option<String> = response.take("breed").unwrap();
 
-    match id {
-        None => Err(StatusCode::NOT_FOUND),
-        Some(_) => {
-            let cat = Cat {
-                // id: id.unwrap().parse().unwrap(),
-                identifier: identifier.unwrap(),
-                name: name.unwrap(),
-                breed: breed.unwrap(),
-            };
-            Ok((StatusCode::OK, Json(cat)))
-        }
-    }
+    let cat: Option<Cat> = response.take(0).unwrap();
+    Ok((StatusCode::OK, Json(cat)))
 }
 
 async fn create_cat(Json(payload): Json<NewCat>) -> Result<impl IntoResponse, StatusCode> {
@@ -122,6 +113,8 @@ async fn create_cat(Json(payload): Json<NewCat>) -> Result<impl IntoResponse, St
             identifier: Some(identifier.to_string()),
             name: payload.name.clone(),
             breed: payload.breed.clone(),
+            microchip: payload.microchip.clone(),
+            image: payload.image.clone(),
         })
         .await
         .unwrap();
@@ -148,6 +141,8 @@ async fn update_cat(
                     identifier: identifier.clone(),
                     name: payload.name.clone(),
                     breed: payload.breed.clone(),
+                    microchip: payload.microchip.clone(),
+                    image: payload.image.clone(),
                 })
                 .await
                 .unwrap();
@@ -175,6 +170,36 @@ async fn delete_cat(Path(uuid): Path<Uuid>) -> StatusCode {
             StatusCode::NO_CONTENT
         }
     }
+}
+
+async fn upload_image(Path(uuid): Path<Uuid>, mut multipart: Multipart) -> Result<impl IntoResponse, StatusCode> {
+    while let Some(field) = multipart
+        .next_field().await.expect("Failed to get next field!")
+    {
+        if field.name().unwrap() != "fileupload" {
+            continue;
+        }
+
+        // Grab the file name
+        let file_name = field.file_name().unwrap();
+        let extension = file_name.split('.').last().unwrap();
+        let file_name = format!("{}.{}", uuid, extension);
+
+        // Create a path for the soon-to-be-created file
+        let file_path = format!("files/{}", file_name);
+
+        // Unwrap the incoming bytes
+        let data = field.bytes().await.expect("Failed to get bytes!");
+
+        // Open a handle to the file
+        let mut file_handle = File::create(file_path).expect("Failed to open file handler!");
+
+        // Write the data to the file
+        file_handle.write_all(&data).expect("Failed to write to file!");
+
+        return Ok((StatusCode::CREATED, Json(format!("files/{}", file_name))));
+    };
+    Err(StatusCode::BAD_REQUEST)
 }
 
 async fn root() -> &'static str {

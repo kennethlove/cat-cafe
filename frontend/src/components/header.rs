@@ -1,11 +1,11 @@
 use dioxus::prelude::*;
-use crate::components::Navbar;
+use crate::components::{Button, Navbar};
 
 #[component]
 pub fn Header() -> Element {
     rsx! {
         header {
-            class: "bg-white",
+            class: "bg-white shadow fixed w-full",
             div {
                 class: "mx-auto flex h-16 max-w-screen-xl items-center gap-8 px-4 sm:px-6 lg:px-8",
                 a {
@@ -15,8 +15,8 @@ pub fn Header() -> Element {
                         "Home"
                     }
                     img {
-                        class: "h-16",
-                        src: "https://placecats.com/64/64",
+                        class: "h-10",
+                        src: "/logo.png",
                     }
                 }
 
@@ -28,13 +28,13 @@ pub fn Header() -> Element {
                         class: "flex items-center gap-4",
                         div {
                             class: "sm:flex sm:gap-4",
-                            a {
-                                class: "block rounded-md bg-rose-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-rose-700 cursor-pointer",
-                                "Login"
+                            Button {
+                                text: "Login".to_string(),
+                                r#type: "button".to_string(),
                             }
-                            a {
-                                class: "hidden rounded-md bg-gray-100 px-5 py-2.5 text-sm font-medium text-rose-600 transition hover:text-rose-600/75 sm:block cursor-pointer",
-                                "Sign up"
+                            Button {
+                                text: "Sign up".to_string(),
+                                r#type: "button".to_string(),
                             }
                         }
                     }

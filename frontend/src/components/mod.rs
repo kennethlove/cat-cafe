@@ -16,8 +16,16 @@ mod cats;
 pub use cats::*;
 mod cat_list;
 pub use cat_list::*;
-mod cat_detail;
 mod navbar;
 pub use navbar::*;
-
+mod cat_detail;
 pub use cat_detail::*;
+mod cat_create_form;
+pub use cat_create_form::*;
+mod input;
+pub use input::*;
+mod input_with_label;
+pub use input_with_label::*;
+mod button;
+pub use button::*;
+//

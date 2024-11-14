@@ -12,8 +12,8 @@ pub fn Footer() -> Element {
                     div {
                         class: "flex justify-center text-teal-600 sm:justify-start",
                         img {
-                            class: "h-16",
-                            src: "https://placecats.com/64/64",
+                            class: "h-10",
+                            src: "/cat.png",
                         }
                     }
                     p {

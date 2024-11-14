@@ -6,7 +6,10 @@ use crate::components::{Header, Footer};
 pub fn Base() -> Element {
     rsx! {
         Header {}
-        Outlet::<Routes> {}
+        div {
+            class: "container w-auto px-4 pt-20 pb-5",
+            Outlet::<Routes> {}
+        }
         Footer {}
     }
 }

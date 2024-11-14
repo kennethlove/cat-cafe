@@ -5,6 +5,7 @@ use crate::components::{
     About,
     Base,
     CatDetail,
+    CatCreateForm,
     CatList,
     Cats,
     Home,
@@ -25,6 +26,8 @@ pub enum Routes {
                 CatList {},
                 #[route("/:id")]
                 CatDetail { id: Uuid },
+                #[route("/create")]
+                CatCreateForm { },
             #[end_layout]
         #[end_nest]
     #[end_layout]
