@@ -13,7 +13,7 @@ pub fn CatDetail(id: Uuid) -> Element {
 
     rsx! {
         div {
-            h2 { "{cat.name}" }
+            class: "flex flex-row items-center gap-4",
             if let Some(image) = &cat.image {
                 img {
                     src: image.to_string(),
@@ -21,6 +21,7 @@ pub fn CatDetail(id: Uuid) -> Element {
                     class: "w-1/2"
                 }
             }
+            h2 { "{cat.name}" }
         }
     }
 }

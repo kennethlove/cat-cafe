@@ -29,6 +29,7 @@ pub fn CatList() -> Element {
                 "Pick a cat"
             }
             ul {
+                class: "flex flex-row items-center gap-2",
                 for cat in cats.unwrap() {
                     li {
                         class: "mb-6",

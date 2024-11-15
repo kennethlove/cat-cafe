@@ -5,7 +5,7 @@ use dioxus::prelude::*;
 use dioxus_logger::tracing;
 use reqwest::multipart::Part;
 use uuid::Uuid;
-use shared::{Cat, FILE_UPLOAD_PATH};
+use shared::{Cat, FILE_PUBLIC_PATH, FILE_UPLOAD_PATH};
 use crate::components::InputWithLabel;
 use crate::components::Button;
 use crate::routes::Routes;
@@ -55,7 +55,7 @@ pub fn CatCreateForm() -> Element {
                     let name = file.name.clone();
                     let contents = file.contents.clone();
 
-                    image_path = Some(format!("/files/{}", {
+                    image_path = Some(format!("{}{}", FILE_PUBLIC_PATH, {
                         let extension = name.split('.').last().unwrap();
                         format!("{}.{}", identifier.clone(), extension)
                     }));

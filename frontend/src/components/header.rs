@@ -1,5 +1,6 @@
 use dioxus::prelude::*;
 use crate::components::{Button, Navbar};
+use crate::routes::Routes;
 
 #[component]
 pub fn Header() -> Element {
@@ -28,13 +29,23 @@ pub fn Header() -> Element {
                         class: "flex items-center gap-4",
                         div {
                             class: "sm:flex sm:gap-4",
-                            Button {
-                                text: "Login".to_string(),
-                                r#type: "button".to_string(),
+                            Link {
+                                class: "group inline-block rounded bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 p-[2px] hover:text-white focus:outline-none focus:ring active:text-opacity-75",
+                                to: Routes::CatCreateForm {},
+                                span {
+                                    class: "block rounded-sm bg-white px-8 py-3 text-sm font-medium group-hover:bg-transparent",
+
+                                    "Add a cat"
+                                }
                             }
-                            Button {
-                                text: "Sign up".to_string(),
-                                r#type: "button".to_string(),
+                            Link {
+                                class: "group inline-block rounded bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 p-[2px] hover:text-white focus:outline-none focus:ring active:text-opacity-75",
+                                to: "#",
+                                span {
+                                    class: "block rounded-sm bg-white px-8 py-3 text-sm font-medium group-hover:bg-transparent",
+
+                                    "Add a cafe"
+                                }
                             }
                         }
                     }

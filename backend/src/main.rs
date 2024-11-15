@@ -1,3 +1,5 @@
+mod cat_api;
+
 use std::fs::File;
 use std::io::Write;
 use axum::error_handling::HandleErrorLayer;
@@ -15,10 +17,11 @@ use tower_http::cors::{CorsLayer, AllowOrigin};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
+use cat_api::{create_cat, delete_cat, get_cat, get_cats, update_cat};
 
-use shared::{Cat, NewCat, FILE_UPLOAD_PATH};
+use shared::{Cat, NewCat, FILE_PUBLIC_PATH, FILE_UPLOAD_PATH};
 
-static DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
+pub static DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
 
 #[tokio::main]
 async fn main() {
@@ -40,7 +43,6 @@ async fn main() {
     .await
     .unwrap();
     tracing::debug!("authenticated with surrealdb");
-    DB.use_ns("cat-cafe").use_db("cats").await.unwrap();
 
     let cors_layer = CorsLayer::new()
         .allow_origin(AllowOrigin::exact("http://localhost:8080".parse().unwrap()))
@@ -84,93 +86,6 @@ async fn main() {
 }
 
 
-async fn get_cats() -> Result<impl IntoResponse, StatusCode> {
-    match DB.select("cat").await {
-        Ok(cats) => Ok((StatusCode::OK, Json::<Vec<Cat>>(cats))),
-        Err(e) => {
-            eprintln!("{:?}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
-}
-
-async fn get_cat(Path(uuid): Path<Uuid>) -> Result<impl IntoResponse, StatusCode> {
-    let mut response = DB
-        .query("SELECT * FROM cat WHERE identifier = $uuid LIMIT 1")
-        .bind(("uuid", uuid.to_string()))
-        .await
-        .unwrap();
-
-    let cat: Option<Cat> = response.take(0).unwrap();
-    Ok((StatusCode::OK, Json(cat)))
-}
-
-async fn create_cat(Json(payload): Json<NewCat>) -> Result<impl IntoResponse, StatusCode> {
-    let identifier = Uuid::new_v4();
-    let cat: Option<Cat> = DB
-        .create("cat")
-        .content(NewCat {
-            identifier: Some(identifier.to_string()),
-            name: payload.name.clone(),
-            breed: payload.breed.clone(),
-            microchip: payload.microchip.clone(),
-            image: payload.image.clone(),
-        })
-        .await
-        .unwrap();
-    Ok((StatusCode::CREATED, Json(cat.unwrap())))
-}
-
-async fn update_cat(
-    Path(uuid): Path<Uuid>,
-    Json(payload): Json<NewCat>,
-) -> Result<impl IntoResponse, StatusCode> {
-    let mut response = DB
-        .query("SELECT * FROM cat WHERE identifier = $uuid")
-        .bind(("uuid", uuid.to_string()))
-        .await
-        .unwrap();
-    let id: Option<RecordId> = response.take("id").unwrap();
-    let identifier: Option<String> = response.take("identifier").unwrap();
-    match id {
-        None => Err(StatusCode::NOT_FOUND),
-        Some(id) => {
-            let cat: Option<Cat> = DB
-                .update(id)
-                .content(NewCat {
-                    identifier: identifier.clone(),
-                    name: payload.name.clone(),
-                    breed: payload.breed.clone(),
-                    microchip: payload.microchip.clone(),
-                    image: payload.image.clone(),
-                })
-                .await
-                .unwrap();
-
-            Ok((StatusCode::OK, Json(Some(cat))))
-        }
-    }
-}
-
-async fn delete_cat(Path(uuid): Path<Uuid>) -> StatusCode {
-    let mut response = DB
-        .query("SELECT * FROM cat WHERE identifier = $uuid")
-        .bind(("uuid", uuid.to_string()))
-        .await
-        .unwrap();
-    let id: Option<RecordId> = response.take("id").unwrap();
-
-    match id {
-        None => StatusCode::NO_CONTENT,
-        Some(id) => {
-            let _: Option<Cat> = DB
-                .delete(id)
-                .await
-                .unwrap();
-            StatusCode::NO_CONTENT
-        }
-    }
-}
 
 async fn upload_image(Path(uuid): Path<Uuid>, mut multipart: Multipart) -> Result<impl IntoResponse, StatusCode> {
     while let Some(field) = multipart
@@ -197,7 +112,7 @@ async fn upload_image(Path(uuid): Path<Uuid>, mut multipart: Multipart) -> Resul
         // Write the data to the file
         file_handle.write_all(&data).expect("Failed to write to file!");
 
-        return Ok((StatusCode::CREATED, Json(format!("{}{}", FILE_UPLOAD_PATH, file_name))));
+        return Ok((StatusCode::CREATED, Json(format!("{}{}", FILE_PUBLIC_PATH, file_name))));
     };
     Err(StatusCode::BAD_REQUEST)
 }
