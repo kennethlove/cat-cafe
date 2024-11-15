@@ -5,7 +5,7 @@ use dioxus::prelude::*;
 use dioxus_logger::tracing;
 use reqwest::multipart::Part;
 use uuid::Uuid;
-use shared::Cat;
+use shared::{Cat, FILE_UPLOAD_PATH};
 use crate::components::InputWithLabel;
 use crate::components::Button;
 use crate::routes::Routes;
@@ -50,32 +50,36 @@ pub fn CatCreateForm() -> Element {
                 let url = format!("http://localhost:3000/cats/{}/images", identifier.clone());
 
                 if !files_uploaded.read().is_empty() {
-                    image_path = use_resource(move || {
+                    let files = files_uploaded.read();
+                    let file = files.first().unwrap();
+                    let name = file.name.clone();
+                    let contents = file.contents.clone();
+
+                    image_path = Some(format!("/files/{}", {
+                        let extension = name.split('.').last().unwrap();
+                        format!("{}.{}", identifier.clone(), extension)
+                    }));
+
+                    let _ = use_resource(move || {
                         let url = url.clone();
-                        let image = async move {
-                            let client = reqwest::Client::new();
-                            let files = files_uploaded.read();
-                            let file = files.first().unwrap();
-                            let name = file.name.clone();
-                            let contents = file.contents.clone();
+                        let name = name.clone();
+                        let contents = contents.clone();
+
+                        async move {
                             let upload = Part::bytes(contents.clone())
-                                .file_name(name.clone());
+                                .file_name(name);
                             let form = reqwest::multipart::Form::new()
                                 .part("fileupload", upload);
+                            let client = reqwest::Client::new();
                             let response = client.post(url.as_str())
                                 .multipart(form)
                                 .send()
                                 .await.unwrap();
                             if response.status().is_success() {
-                                let image = response.json::<String>().await.unwrap();
-                                tracing::info!("Image uploaded successfully");
-                                Some(image)
-                            } else {
-                                None
+                                let _ = response.json::<String>().await.unwrap();
                             }
-                        };
-                        image
-                    })();
+                        }
+                    });
                 }
 
                 let new_cat = Cat {
@@ -83,9 +87,8 @@ pub fn CatCreateForm() -> Element {
                     name,
                     breed,
                     microchip: Some(microchip),
-                    image: image_path.expect("Image path not found"),
+                    image: image_path.into(),
                 };
-                tracing::debug!("New cat: {:?}", new_cat);
 
                 let _ = use_resource(move || {
                     let value = new_cat.clone();
@@ -97,7 +100,6 @@ pub fn CatCreateForm() -> Element {
                             .await.unwrap();
                         if response.status().is_success() {
                             let cat = response.json::<Cat>().await.unwrap();
-                            tracing::info!("Cat created successfully");
                             name_signal.set(String::new());
                             breed_signal.set(String::new());
                             microchip_signal.set(String::new());

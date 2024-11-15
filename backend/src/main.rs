@@ -16,7 +16,7 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
 
-use shared::{Cat, NewCat};
+use shared::{Cat, NewCat, FILE_UPLOAD_PATH};
 
 static DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
 
@@ -186,7 +186,7 @@ async fn upload_image(Path(uuid): Path<Uuid>, mut multipart: Multipart) -> Resul
         let file_name = format!("{}.{}", uuid, extension);
 
         // Create a path for the soon-to-be-created file
-        let file_path = format!("files/{}", file_name);
+        let file_path = format!("{}{}", FILE_UPLOAD_PATH, file_name);
 
         // Unwrap the incoming bytes
         let data = field.bytes().await.expect("Failed to get bytes!");
@@ -197,7 +197,7 @@ async fn upload_image(Path(uuid): Path<Uuid>, mut multipart: Multipart) -> Resul
         // Write the data to the file
         file_handle.write_all(&data).expect("Failed to write to file!");
 
-        return Ok((StatusCode::CREATED, Json(format!("files/{}", file_name))));
+        return Ok((StatusCode::CREATED, Json(format!("{}{}", FILE_UPLOAD_PATH, file_name))));
     };
     Err(StatusCode::BAD_REQUEST)
 }

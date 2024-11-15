@@ -14,6 +14,13 @@ pub fn CatDetail(id: Uuid) -> Element {
     rsx! {
         div {
             h2 { "{cat.name}" }
+            if let Some(image) = &cat.image {
+                img {
+                    src: image.to_string(),
+                    alt: "{cat.name}",
+                    class: "w-1/2"
+                }
+            }
         }
     }
 }
