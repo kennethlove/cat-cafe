@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use crate::components::{Button, Navbar};
+use crate::components::Navbar;
 use crate::routes::Routes;
 
 #[component]

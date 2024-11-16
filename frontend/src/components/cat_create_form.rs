@@ -5,7 +5,7 @@ use dioxus::prelude::*;
 use dioxus_logger::tracing;
 use reqwest::multipart::Part;
 use uuid::Uuid;
-use shared::{Cat, FILE_PUBLIC_PATH, FILE_UPLOAD_PATH};
+use shared::{Cat, FILE_PUBLIC_PATH};
 use crate::components::InputWithLabel;
 use crate::components::Button;
 use crate::routes::Routes;

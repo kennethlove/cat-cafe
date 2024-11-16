@@ -30,5 +30,15 @@ pub struct UploadedFile {
 pub struct Cafe {
     pub identifier: String,
     pub name: String,
-    pub cats: Vec<Cat>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct NewCafe {
+    pub name: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CatCafe {
+    pub cat_identifier: String,
+    pub cafe_identifier: String,
 }

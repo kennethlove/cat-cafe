@@ -1,4 +1,4 @@
-mod cat_api;
+mod api;
 
 use std::fs::File;
 use std::io::Write;
@@ -11,15 +11,19 @@ use axum::extract::Multipart;
 use axum::routing::post;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
-use surrealdb::{RecordId, Surreal};
+use surrealdb::Surreal;
 use tower::ServiceBuilder;
 use tower_http::cors::{CorsLayer, AllowOrigin};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
-use cat_api::{create_cat, delete_cat, get_cat, get_cats, update_cat};
+use api::{
+    cafes::{get_cafes, create_cafe},
+    cats::{create_cat, delete_cat, get_cat, get_cats, update_cat},
+};
 
-use shared::{Cat, NewCat, FILE_PUBLIC_PATH, FILE_UPLOAD_PATH};
+use shared::{FILE_PUBLIC_PATH, FILE_UPLOAD_PATH};
+use crate::api::cafes::get_cafe;
 
 pub static DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
 
@@ -56,6 +60,9 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(root))
+        .route("/cafes", get(get_cafes).post(create_cafe))
+        .route("/cafes/:uuid", get(get_cafe))//.put(update_cafe))
+        // .route("/cafes/:uuid/cats", get(get_cafe_cats).post(create_cafe_cat))
         .route("/cats", get(get_cats).post(create_cat))
         .route(
             "/cats/:uuid",
