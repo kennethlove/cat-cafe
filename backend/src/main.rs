@@ -1,14 +1,23 @@
 mod api;
 
-use std::fs::File;
-use std::io::Write;
+use std::collections::HashMap;
+use api::{
+    cafes::{get_cafes, create_cafe, get_cafe},
+    cats::{create_cat, delete_cat, get_cat, get_cats, update_cat},
+};
 use axum::error_handling::HandleErrorLayer;
 use axum::response::IntoResponse;
 use axum::{extract::Path, http::StatusCode, routing::get, BoxError, Json, Router};
-use std::sync::LazyLock;
-use std::time::Duration;
 use axum::extract::Multipart;
 use axum::routing::post;
+use minio_rsc::client::{BucketArgs, KeyArgs};
+use minio_rsc::error::Result as MinioResult;
+use minio_rsc::provider::StaticProvider;
+use minio_rsc::Minio;
+use std::fs::File;
+use std::io::Write;
+use std::sync::LazyLock;
+use std::time::Duration;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
 use surrealdb::Surreal;
@@ -16,14 +25,10 @@ use tower::ServiceBuilder;
 use tower_http::cors::{CorsLayer, AllowOrigin};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use url::Url;
 use uuid::Uuid;
-use api::{
-    cafes::{get_cafes, create_cafe},
-    cats::{create_cat, delete_cat, get_cat, get_cats, update_cat},
-};
 
 use shared::{FILE_PUBLIC_PATH, FILE_UPLOAD_PATH};
-use crate::api::cafes::get_cafe;
 
 pub static DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
 
@@ -102,22 +107,40 @@ async fn upload_image(Path(uuid): Path<Uuid>, mut multipart: Multipart) -> Resul
             continue;
         }
 
-        // Grab the file name
-        let file_name = field.file_name().unwrap();
-        let extension = file_name.split('.').last().unwrap();
+        let extension = field.file_name().unwrap().split('.').last().unwrap();
         let file_name = format!("{}.{}", uuid, extension);
+        let content_type = format!("image/{}", extension);
+        let bytes = field.bytes().await.unwrap();
 
         // Create a path for the soon-to-be-created file
-        let file_path = format!("{}{}", FILE_UPLOAD_PATH, file_name);
+        // let file_path = format!("{}{}", FILE_UPLOAD_PATH, file_name);
 
-        // Unwrap the incoming bytes
-        let data = field.bytes().await.expect("Failed to get bytes!");
+        let provider = StaticProvider::new("QaSFuiRltxT79hSRQpsk", "OxxsZiTOmE7DEOvlqLoq0D23usZhBr5klWZPcdhJ", None);
+        let minio = Minio::builder()
+            .endpoint("localhost:9000")
+            .provider(provider)
+            .region("home")
+            .secure(false)
+            .build()
+            .unwrap();
+
+        let (buckets, owner) = minio.list_buckets().await.unwrap();
+        let metadata: HashMap<String, String> = [("filename".to_owned(), file_name.to_owned())].into();
+        let key = KeyArgs::new(file_name.clone())
+            .content_type(Some(content_type))
+            .metadata(metadata);
+        minio.put_object(&buckets.first().unwrap().name, key, bytes).await.expect("Failed to upload file!");
+
+        let _file = minio.get_object(&buckets.first().unwrap().name, &file_name).await.expect("Failed to get file!");
+        tracing::debug!("uploaded file: {:?}", _file);
 
         // Open a handle to the file
-        let mut file_handle = File::create(file_path).expect("Failed to open file handler!");
+        // std::fs::create_dir_all(FILE_UPLOAD_PATH).expect("Failed to create directory!");
+        // let mut file_handle = File::create(file_path).expect("Failed to open file handler!");
 
         // Write the data to the file
-        file_handle.write_all(&data).expect("Failed to write to file!");
+        // file_handle.write_all(&data).expect("Failed to write to file!");
+
 
         return Ok((StatusCode::CREATED, Json(format!("{}{}", FILE_PUBLIC_PATH, file_name))));
     };

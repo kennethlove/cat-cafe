@@ -18,7 +18,7 @@ pub fn CatDetail(id: Uuid) -> Element {
                 img {
                     src: image.to_string(),
                     alt: "{cat.name}",
-                    class: "w-1/2"
+                    class: "h-32"
                 }
             }
             h2 { "{cat.name}" }
