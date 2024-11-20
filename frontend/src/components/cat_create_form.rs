@@ -6,7 +6,7 @@ use dioxus_logger::tracing;
 use reqwest::multipart::Part;
 use reqwest::multipart::Form;
 use uuid::Uuid;
-use shared::{Cat, FILE_PUBLIC_PATH};
+use shared::{Cat, NewCat};
 use crate::components::InputWithLabel;
 use crate::components::Button;
 use crate::routes::Routes;
@@ -83,8 +83,8 @@ pub fn CatCreateForm() -> Element {
 
                             let image_path = image_path.read().clone();
 
-                            let new_cat = Cat {
-                                identifier: identifier.clone(),
+                            let new_cat = NewCat {
+                                identifier: Some(identifier.clone()),
                                 name: cat_name,
                                 breed,
                                 microchip: Some(microchip),

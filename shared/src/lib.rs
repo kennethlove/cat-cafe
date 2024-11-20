@@ -1,7 +1,4 @@
 use serde::{Deserialize, Serialize};
-pub const FILE_UPLOAD_PATH: &str = "frontend/assets/files/";
-pub const FILE_PUBLIC_PATH: &str = "/files/";
-
 #[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq)]
 pub struct Cat {
     pub identifier: String,

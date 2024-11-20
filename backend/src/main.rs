@@ -8,15 +8,12 @@ use axum::error_handling::HandleErrorLayer;
 use axum::extract::Multipart;
 use axum::response::IntoResponse;
 use axum::routing::post;
-use axum::{extract::Path, http::StatusCode, routing::get, BoxError, Json, Router};
-use minio_rsc::client::{BucketArgs, KeyArgs, PresignedArgs};
-use minio_rsc::error::Result as MinioResult;
+use axum::{extract::Path, http::StatusCode, routing::get, BoxError, Router};
+use minio_rsc::client::KeyArgs;
 use minio_rsc::provider::StaticProvider;
 use minio_rsc::Minio;
 use std::collections::HashMap;
 use std::env;
-use std::fs::File;
-use std::io::Write;
 use std::sync::LazyLock;
 use std::time::Duration;
 use axum::http::header::{ACCESS_CONTROL_EXPOSE_HEADERS, CONTENT_TYPE, LOCATION};
@@ -28,10 +25,7 @@ use tower::ServiceBuilder;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use url::Url;
 use uuid::Uuid;
-
-use shared::{FILE_PUBLIC_PATH, FILE_UPLOAD_PATH};
 
 pub static DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
 
@@ -128,7 +122,7 @@ async fn upload_image(Path(uuid): Path<Uuid>, mut multipart: Multipart) -> Resul
             .build()
             .unwrap();
 
-        let (buckets, owner) = minio.list_buckets().await.unwrap();
+        let (buckets, _) = minio.list_buckets().await.unwrap();
         let bucket_name = &buckets.first().unwrap().name;
         let metadata: HashMap<String, String> = [("filename".to_owned(), file_name.to_owned())].into();
         let key = KeyArgs::new(file_name.clone())
