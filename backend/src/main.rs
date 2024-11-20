@@ -1,28 +1,30 @@
 mod api;
 
-use std::collections::HashMap;
 use api::{
-    cafes::{get_cafes, create_cafe, get_cafe},
+    cafes::{create_cafe, get_cafe, get_cafes},
     cats::{create_cat, delete_cat, get_cat, get_cats, update_cat},
 };
 use axum::error_handling::HandleErrorLayer;
-use axum::response::IntoResponse;
-use axum::{extract::Path, http::StatusCode, routing::get, BoxError, Json, Router};
 use axum::extract::Multipart;
+use axum::response::IntoResponse;
 use axum::routing::post;
-use minio_rsc::client::{BucketArgs, KeyArgs};
+use axum::{extract::Path, http::StatusCode, routing::get, BoxError, Json, Router};
+use minio_rsc::client::{BucketArgs, KeyArgs, PresignedArgs};
 use minio_rsc::error::Result as MinioResult;
 use minio_rsc::provider::StaticProvider;
 use minio_rsc::Minio;
+use std::collections::HashMap;
+use std::env;
 use std::fs::File;
 use std::io::Write;
 use std::sync::LazyLock;
 use std::time::Duration;
+use axum::http::Response;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
 use surrealdb::Surreal;
 use tower::ServiceBuilder;
-use tower_http::cors::{CorsLayer, AllowOrigin};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use url::Url;
@@ -34,6 +36,8 @@ pub static DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
 
 #[tokio::main]
 async fn main() {
+    dotenvy::dotenv().unwrap();
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
@@ -54,7 +58,7 @@ async fn main() {
     tracing::debug!("authenticated with surrealdb");
 
     let cors_layer = CorsLayer::new()
-        .allow_origin(AllowOrigin::exact("http://localhost:8080".parse().unwrap()))
+        .allow_origin(AllowOrigin::any())
         .allow_headers(vec!["content-type".parse().unwrap()])
         .allow_methods(vec![
             "GET".parse().unwrap(),
@@ -100,6 +104,7 @@ async fn main() {
 
 
 async fn upload_image(Path(uuid): Path<Uuid>, mut multipart: Multipart) -> Result<impl IntoResponse, StatusCode> {
+    dotenvy::dotenv().unwrap();
     while let Some(field) = multipart
         .next_field().await.expect("Failed to get next field!")
     {
@@ -115,24 +120,25 @@ async fn upload_image(Path(uuid): Path<Uuid>, mut multipart: Multipart) -> Resul
         // Create a path for the soon-to-be-created file
         // let file_path = format!("{}{}", FILE_UPLOAD_PATH, file_name);
 
-        let provider = StaticProvider::new("QaSFuiRltxT79hSRQpsk", "OxxsZiTOmE7DEOvlqLoq0D23usZhBr5klWZPcdhJ", None);
+        // let provider = StaticProvider::new("QaSFuiRltxT79hSRQpsk", "OxxsZiTOmE7DEOvlqLoq0D23usZhBr5klWZPcdhJ", None);
+        let provider = StaticProvider::from_env();
         let minio = Minio::builder()
             .endpoint("localhost:9000")
-            .provider(provider)
+            .provider(provider.unwrap())
             .region("home")
             .secure(false)
             .build()
             .unwrap();
 
         let (buckets, owner) = minio.list_buckets().await.unwrap();
+        let bucket_name = &buckets.first().unwrap().name;
         let metadata: HashMap<String, String> = [("filename".to_owned(), file_name.to_owned())].into();
         let key = KeyArgs::new(file_name.clone())
             .content_type(Some(content_type))
             .metadata(metadata);
-        minio.put_object(&buckets.first().unwrap().name, key, bytes).await.expect("Failed to upload file!");
+        minio.put_object(bucket_name, key, bytes.clone()).await.expect("Failed to upload file!");
 
-        let _file = minio.get_object(&buckets.first().unwrap().name, &file_name).await.expect("Failed to get file!");
-        tracing::debug!("uploaded file: {:?}", _file);
+        let uploaded_file = minio.get_object(bucket_name, &file_name).await.expect("Failed to get file!");
 
         // Open a handle to the file
         // std::fs::create_dir_all(FILE_UPLOAD_PATH).expect("Failed to create directory!");
@@ -141,8 +147,15 @@ async fn upload_image(Path(uuid): Path<Uuid>, mut multipart: Multipart) -> Resul
         // Write the data to the file
         // file_handle.write_all(&data).expect("Failed to write to file!");
 
-
-        return Ok((StatusCode::CREATED, Json(format!("{}{}", FILE_PUBLIC_PATH, file_name))));
+        // Return the URL of the uploaded file
+        let url = minio.presigned_get_object(PresignedArgs::new(bucket_name, file_name).expires(24*3600)).await.expect("Failed to get presigned URL!");
+        let response = Response::builder()
+            .header("Location", url.clone())
+            .status(StatusCode::CREATED)
+            .body("".to_string())
+            .unwrap();
+        tracing::info!("Response: {:?}", response);
+        return Ok(response);
     };
     Err(StatusCode::BAD_REQUEST)
 }

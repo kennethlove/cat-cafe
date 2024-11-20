@@ -8,7 +8,7 @@ edition = "2021"
 
 [dependencies]
 dioxus = { version = "0.5", features = ["web", "router"] }
-reqwest = {version = "0.12.9", features = ["json", "multipart", "blocking", "stream"]}
+reqwest = {version = "0.12.9", features = ["json", "multipart"]}
 serde = { version = "1.0.197", features = ["derive"] }
 tokio = { version = "1.41.0", features = ["rt", "sync"] }
 uuid = { version = "1.11.0", features = ["serde", "v4", "js"] }

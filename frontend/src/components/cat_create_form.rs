@@ -4,6 +4,7 @@ use dioxus::html::FileEngine;
 use dioxus::prelude::*;
 use dioxus_logger::tracing;
 use reqwest::multipart::Part;
+use reqwest::multipart::Form;
 use uuid::Uuid;
 use shared::{Cat, FILE_PUBLIC_PATH};
 use crate::components::InputWithLabel;
@@ -18,6 +19,7 @@ pub fn CatCreateForm() -> Element {
     let mut breed_signal = use_signal(||cat.read().breed.clone());
     let mut microchip_signal = use_signal(||cat.read().microchip.clone().unwrap_or_default());
     let mut files_uploaded = use_signal(|| Vec::new() as Vec<UploadedFile>);
+    let mut image_path = use_signal(String::new);
 
     let read_files = move |file_engine: Arc<dyn FileEngine>| async move {
         let files = file_engine.files();
@@ -41,75 +43,76 @@ pub fn CatCreateForm() -> Element {
         form {
             class: "space-y-4 grid grid-cols-2 gap-4",
             enctype: "multipart/form-data",
-            onsubmit: move |_| {
+            onsubmit: move |_event| {
                 let name = name_signal.read().clone();
                 let breed: String = breed_signal.read().clone();
                 let microchip: String = microchip_signal.read().clone();
-                let mut image_path = None;
                 let identifier = Uuid::new_v4().to_string();
                 let url = format!("http://localhost:3000/cats/{}/images", identifier.clone());
 
                 if !files_uploaded.read().is_empty() {
                     let files = files_uploaded.read();
                     let file = files.first().unwrap();
-                    let name = file.name.clone();
+                    let file_name = file.name.clone();
                     let contents = file.contents.clone();
-
-                    image_path = Some(format!("{}{}", FILE_PUBLIC_PATH, {
-                        let extension = name.split('.').last().unwrap();
-                        format!("{}.{}", identifier.clone(), extension)
-                    }));
 
                     let _ = use_resource(move || {
                         let url = url.clone();
-                        let name = name.clone();
+                        let file_name = file_name.clone();
                         let contents = contents.clone();
+                        let microchip = microchip.clone();
+                        let breed = breed.clone();
+                        let identifier = identifier.clone();
+                        let cat_name = name.clone();
 
                         async move {
-                            let upload = Part::bytes(contents.clone())
-                                .file_name(name);
-                            let form = reqwest::multipart::Form::new()
+                            let upload = Part::bytes(contents)
+                                .file_name(file_name.clone());
+                            let form = Form::new()
                                 .part("fileupload", upload);
                             let client = reqwest::Client::new();
-                            let response = client.post(url.as_str())
+                            let response = client.post(url)
                                 .multipart(form)
                                 .send()
                                 .await.unwrap();
                             if response.status().is_success() {
-                                let _ = response.json::<String>().await.unwrap();
+                                tracing::info!("Headers: {:?}", response.headers());
+                                response.headers().get("Location").map(|location| {
+                                    image_path.set(location.to_str().unwrap().to_string());
+                                });
+                                tracing::info!("Uploaded file: {:?}", image_path.read());
+                            }
+
+                            let image_path = image_path.read().clone();
+
+                            let new_cat = Cat {
+                                identifier: identifier.clone(),
+                                name: cat_name,
+                                breed,
+                                microchip: Some(microchip),
+                                image: Some(image_path),
+                            };
+
+                            let value = new_cat.clone();
+
+                            let client = reqwest::Client::new();
+                            let response = client.post("http://localhost:3000/cats")
+                                .json(&value)
+                                .send()
+                                .await.unwrap();
+                            if response.status().is_success() {
+                                let cat = response.json::<Cat>().await.unwrap();
+                                name_signal.set(String::new());
+                                breed_signal.set(String::new());
+                                microchip_signal.set(String::new());
+                                let nav = navigator();
+                                nav.push(Routes::CatDetail { id: Uuid::parse_str(&cat.identifier.as_str()).unwrap() });
+                            } else {
+                                tracing::info!("Failed to create cat");
                             }
                         }
                     });
                 }
-
-                let new_cat = Cat {
-                    identifier: identifier.clone(),
-                    name,
-                    breed,
-                    microchip: Some(microchip),
-                    image: image_path.into(),
-                };
-
-                let _ = use_resource(move || {
-                    let value = new_cat.clone();
-                    async move {
-                        let client = reqwest::Client::new();
-                        let response = client.post("http://localhost:3000/cats")
-                            .json(&value)
-                            .send()
-                            .await.unwrap();
-                        if response.status().is_success() {
-                            let cat = response.json::<Cat>().await.unwrap();
-                            name_signal.set(String::new());
-                            breed_signal.set(String::new());
-                            microchip_signal.set(String::new());
-                            let nav = navigator();
-                            nav.push(Routes::CatDetail { id: Uuid::parse_str(&cat.identifier.as_str()).unwrap() });
-                        } else {
-                            tracing::info!("Failed to create cat");
-                        }
-                    }
-                });
             },
             h2 {
                 class: "col-span-2 text-2xl",
