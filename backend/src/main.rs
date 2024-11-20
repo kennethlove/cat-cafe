@@ -19,6 +19,7 @@ use std::fs::File;
 use std::io::Write;
 use std::sync::LazyLock;
 use std::time::Duration;
+use axum::http::header::{ACCESS_CONTROL_EXPOSE_HEADERS, CONTENT_TYPE, LOCATION};
 use axum::http::Response;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
@@ -117,9 +118,6 @@ async fn upload_image(Path(uuid): Path<Uuid>, mut multipart: Multipart) -> Resul
         let content_type = format!("image/{}", extension);
         let bytes = field.bytes().await.unwrap();
 
-        // Create a path for the soon-to-be-created file
-        // let file_path = format!("{}{}", FILE_UPLOAD_PATH, file_name);
-
         // let provider = StaticProvider::new("QaSFuiRltxT79hSRQpsk", "OxxsZiTOmE7DEOvlqLoq0D23usZhBr5klWZPcdhJ", None);
         let provider = StaticProvider::from_env();
         let minio = Minio::builder()
@@ -139,22 +137,15 @@ async fn upload_image(Path(uuid): Path<Uuid>, mut multipart: Multipart) -> Resul
         minio.put_object(bucket_name, key, bytes.clone()).await.expect("Failed to upload file!");
 
         let uploaded_file = minio.get_object(bucket_name, &file_name).await.expect("Failed to get file!");
+        let url = uploaded_file.url().as_str();
 
-        // Open a handle to the file
-        // std::fs::create_dir_all(FILE_UPLOAD_PATH).expect("Failed to create directory!");
-        // let mut file_handle = File::create(file_path).expect("Failed to open file handler!");
-
-        // Write the data to the file
-        // file_handle.write_all(&data).expect("Failed to write to file!");
-
-        // Return the URL of the uploaded file
-        let url = minio.presigned_get_object(PresignedArgs::new(bucket_name, file_name).expires(24*3600)).await.expect("Failed to get presigned URL!");
         let response = Response::builder()
-            .header("Location", url.clone())
             .status(StatusCode::CREATED)
+            .header(LOCATION, url)
+            .header(CONTENT_TYPE, "text/plain")
+            .header(ACCESS_CONTROL_EXPOSE_HEADERS, "Location")
             .body("".to_string())
             .unwrap();
-        tracing::info!("Response: {:?}", response);
         return Ok(response);
     };
     Err(StatusCode::BAD_REQUEST)

@@ -76,11 +76,9 @@ pub fn CatCreateForm() -> Element {
                                 .send()
                                 .await.unwrap();
                             if response.status().is_success() {
-                                tracing::info!("Headers: {:?}", response.headers());
                                 response.headers().get("Location").map(|location| {
                                     image_path.set(location.to_str().unwrap().to_string());
                                 });
-                                tracing::info!("Uploaded file: {:?}", image_path.read());
                             }
 
                             let image_path = image_path.read().clone();
@@ -102,9 +100,6 @@ pub fn CatCreateForm() -> Element {
                                 .await.unwrap();
                             if response.status().is_success() {
                                 let cat = response.json::<Cat>().await.unwrap();
-                                name_signal.set(String::new());
-                                breed_signal.set(String::new());
-                                microchip_signal.set(String::new());
                                 let nav = navigator();
                                 nav.push(Routes::CatDetail { id: Uuid::parse_str(&cat.identifier.as_str()).unwrap() });
                             } else {
