@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+
 #[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq)]
 pub struct Cat {
     pub identifier: String,

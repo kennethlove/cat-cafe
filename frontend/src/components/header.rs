@@ -6,18 +6,19 @@ use crate::routes::Routes;
 pub fn Header() -> Element {
     rsx! {
         header {
-            class: "bg-white shadow fixed w-full",
+            class: "mt-4",
             div {
-                class: "mx-auto flex h-16 max-w-screen-xl items-center gap-8 px-4 sm:px-6 lg:px-8",
+                class: "mx-auto flex items-center gap-8 px-6 md:px-4 lg:px-8",
                 a {
-                    class: "block text-teal-600",
+                    class: "block",
                     span {
                         class: "sr-only",
-                        "Home"
+                        "Cat Cafe"
                     }
                     img {
                         class: "h-10",
-                        src: "/logo.png",
+                        src: asset!("/assets/logo.png"),
+                        alt: "Cat Cafe logo"
                     }
                 }
 
@@ -30,22 +31,14 @@ pub fn Header() -> Element {
                         div {
                             class: "sm:flex sm:gap-4",
                             Link {
-                                class: "group inline-block rounded bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 p-[2px] hover:text-white focus:outline-none focus:ring active:text-opacity-75",
+                                class: "btn btn-primary btn-outline",
                                 to: Routes::CatCreateForm {},
-                                span {
-                                    class: "block rounded-sm bg-white px-8 py-3 text-sm font-medium group-hover:bg-transparent",
-
-                                    "Add a cat"
-                                }
+                                "Add a cat"
                             }
                             Link {
-                                class: "group inline-block rounded bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 p-[2px] hover:text-white focus:outline-none focus:ring active:text-opacity-75",
-                                to: "#",
-                                span {
-                                    class: "block rounded-sm bg-white px-8 py-3 text-sm font-medium group-hover:bg-transparent",
-
-                                    "Add a cafe"
-                                }
+                                class: "btn btn-primary btn-outline",
+                                to: Routes::Home {},
+                                "Add a cafe"
                             }
                         }
                     }

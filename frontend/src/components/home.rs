@@ -4,12 +4,13 @@ use dioxus::prelude::*;
 pub fn Home() -> Element {
     rsx! {
       section {
-        class: "relative bg-[url(https://images.unsplash.com/photo-1661518601049-469cb1293ae5?q=80&w=1174&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D)] bg-cover bg-center bg-no-repeat",
+        class: "relative bg-cover bg-center bg-no-repeat bg-[url(https://images.unsplash.com/photo-1661518601049-469cb1293ae5?q=80&w=1174&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D)]",
+
         div {
           class: "absolute inset-0 bg-transparent sm:from-white/75 sm:to-white/25 sm:bg-gradient-to-r",
         }
         div {
-          class: "relative mx-auto max-w-screen-xl px-4 py-32 sm:px-6 lg:flex lg:h-screen lg:items-center lg:px-8",
+          class: "relative mx-auto max-w-screen-xl px-6 md:px-4 py-32 lg:px-8",
           div {
             class: "max-w-xl ltr:sm:text-left rtl:sm:text-right",
             h1 {
@@ -41,4 +42,3 @@ pub fn Home() -> Element {
       }
     }
 }
-

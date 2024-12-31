@@ -5,12 +5,15 @@ use crate::components::{Header, Footer};
 #[component]
 pub fn Base() -> Element {
     rsx! {
-        Header {}
         div {
-            class: "container w-auto px-4 pt-20 pb-5",
-            Outlet::<Routes> {}
+            id: "layout",
+            Header {}
+            div {
+                class: "mt-4",
+                Outlet::<Routes> {}
+            }
+            Footer {}
         }
-        Footer {}
     }
 }
 

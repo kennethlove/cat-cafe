@@ -28,35 +28,54 @@ pub fn CatList() -> Element {
                 class: "text-2xl font-bold text-yellow-800 dark:text-yellow-800 tracking-wider",
                 "Pick a cat"
             }
-            ul {
-                class: "flex flex-row items-center gap-2",
-                for cat in cats.unwrap() {
-                    li {
-                        class: "mb-6",
-                        Link {
-                            to: Routes::CatDetail {
-                                id: Uuid::parse_str(cat.clone().identifier.as_str()).unwrap()
-                            },
-                            class: "block",
-                            img {
-                                class: "h-52 w-full rounded-bl-3xl rounded-tr-3xl object-cover sm:h-64 lg:h-72",
-                                src: cat.image.unwrap_or("https://placecats.com/960/960".to_string()),
-                                alt: "{cat.name}"
+            table {
+                class: "table table-zebra table-auto",
+                thead {
+                    tr {
+                        th {}
+                        th { "image" }
+                        th { "name" }
+                        th { "breed" }
+                        th { "microchip" }
+                    }
+                }
+                tbody {
+                    for cat in cats.clone().unwrap() {
+                        tr {
+                            td {
+                                input {
+                                    r#type: "checkbox",
+                                    name: "cat",
+                                    value: "{cat.identifier}"
+                                }
                             }
-                            div {
-                                class: "mt-2 sm:flex sm:items-center sm:justify-center sm:gap-4",
-                                strong {
-                                    class: "font-medium",
+                            td {
+                                div {
+                                    class: "avatar avatar-online",
+                                    div {
+                                        class: "w-16 rounded-full",
+                                        img {
+                                            class: "",
+                                            src: cat.image.unwrap_or("https://placecats.com/96/96".to_string()),
+                                            alt: "{cat.name}"
+                                        }
+                                    }
+                                }
+                            }
+                            td {
+                                Link {
+                                    to: Routes::CatDetail {
+                                        id: Uuid::parse_str(cat.clone().identifier.as_str()).unwrap()
+                                    },
                                     "{cat.name}"
                                 }
-                                span {
-                                    class: "hidden sm:block sm:h-px sm:w-8 sm:bg-pink-500",
-                                    ""
-                                }
-                                p {
-                                    class: "mt-0.5 opacity-50 sm:mt-0",
-                                    "{cat.breed}"
-                                }
+                            }
+                            td {
+                                "{cat.breed}"
+                            }
+                            td {
+                                if !cat.microchip.is_some() { "None" }
+                                    else { "{&cat.microchip.as_ref().unwrap()}" }
                             }
                         }
                     }

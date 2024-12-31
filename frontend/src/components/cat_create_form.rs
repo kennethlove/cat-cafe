@@ -40,8 +40,12 @@ pub fn CatCreateForm() -> Element {
     };
 
     rsx! {
+        h2 {
+            class: "col-span-2 text-2xl",
+            "Create a new cat"
+        }
         form {
-            class: "space-y-4 grid grid-cols-2 gap-4",
+            // class: "flex flex-wrap gap-3",
             enctype: "multipart/form-data",
             onsubmit: move |_event| {
                 let name = name_signal.read().clone();
@@ -109,30 +113,26 @@ pub fn CatCreateForm() -> Element {
                     });
                 }
             },
-            h2 {
-                class: "col-span-2 text-2xl",
-                "Create a new cat"
-            }
-            InputWithLabel {
-                r#type: "text".to_string(),
-                required: true,
-                value: name_signal.read().clone(),
-                name: "name".to_string(),
-                placeholder: "Name".to_string(),
-                oninput: move |event: Rc<FormData>| name_signal.set(event.value().clone()),
-                extra_css_classes: None,
-            }
-            InputWithLabel {
-                r#type: "text".to_string(),
-                required: true,
-                value: breed_signal.read().clone(),
-                name: "breed".to_string(),
-                placeholder: "Breed".to_string(),
-                oninput: move |event: Rc<FormData>| breed_signal.set(event.value().clone()),
-                extra_css_classes: None,
-            }
             div {
-                class: "col-span-2",
+                class: "flex flex-wrap gap-4",
+                InputWithLabel {
+                    r#type: "text".to_string(),
+                    required: true,
+                    value: name_signal.read().clone(),
+                    name: "name".to_string(),
+                    placeholder: "Name".to_string(),
+                    oninput: move |event: Rc<FormData>| name_signal.set(event.value().clone()),
+                    extra_css_classes: None,
+                }
+                InputWithLabel {
+                    r#type: "text".to_string(),
+                    required: true,
+                    value: breed_signal.read().clone(),
+                    name: "breed".to_string(),
+                    placeholder: "Breed".to_string(),
+                    oninput: move |event: Rc<FormData>| breed_signal.set(event.value().clone()),
+                    extra_css_classes: None,
+                }
                 InputWithLabel {
                     r#type: "text".to_string(),
                     name: "microchip".to_string(),
@@ -142,22 +142,21 @@ pub fn CatCreateForm() -> Element {
                     oninput: move |event: Rc<FormData>| microchip_signal.set(event.value().clone()),
                     extra_css_classes: None,
                 }
-            }
-            div {
-                class: "col-span-2",
-                "Upload an image",
-                input {
-                    class: "peer h-8 w-full border-none bg-transparent p-0 placeholder-transparent focus:border-transparent focus:outline-none focus:ring-0 sm:text-sm",
-                    r#type: "file",
-                    id: "images",
-                    name: "images",
-                    onchange: upload_files,
+                label {
+                    input {
+                        class: "file-input",
+                        r#type: "file",
+                        id: "images",
+                        name: "images",
+                        onchange: upload_files,
+                    }
                 }
-            }
 
-            Button {
-                text: "Create".to_string(),
-                r#type: "submit".to_string(),
+            }
+            button {
+                class: "btn btn-primary mt-4",
+                r#type: "submit",
+                "Create"
             }
         }
     }

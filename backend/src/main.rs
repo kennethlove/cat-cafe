@@ -31,8 +31,6 @@ pub static DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
 
 #[tokio::main]
 async fn main() {
-    dotenvy::dotenv().unwrap();
-
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
@@ -108,11 +106,11 @@ async fn upload_image(Path(uuid): Path<Uuid>, mut multipart: Multipart) -> Resul
         }
 
         let extension = field.file_name().unwrap().split('.').last().unwrap();
-        let file_name = format!("{}.{}", uuid, extension);
+        let file_name = format!("cat/{}.{}", uuid, extension);
         let content_type = format!("image/{}", extension);
         let bytes = field.bytes().await.unwrap();
 
-        // let provider = StaticProvider::new("QaSFuiRltxT79hSRQpsk", "OxxsZiTOmE7DEOvlqLoq0D23usZhBr5klWZPcdhJ", None);
+        // let provider = Some(StaticProvider::new("QaSFuiRltxT79hSRQpsk", "OxxsZiTOmE7DEOvlqLoq0D23usZhBr5klWZPcdhJ", None));
         let provider = StaticProvider::from_env();
         let minio = Minio::builder()
             .endpoint("localhost:9000")

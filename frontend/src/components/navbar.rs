@@ -11,19 +11,19 @@ pub fn Navbar() -> Element {
                 class: "flex items-center gap-6 text-sm",
                 li {
                     Link {
-                        class: "text-gray-700 transition hover:text-rose-500",
+                        class: "text-gray-700 dark:text-gray-200 transition hover:text-rose-500",
                         to: Routes::Home {}, "Home"
                     }
                 }
                 li {
                     Link {
-                        class: "text-gray-700 transition hover:text-rose-500",
+                        class: "text-gray-700 dark:text-gray-200 transition hover:text-rose-500",
                         to: Routes::CatList {}, "Cats"
                     }
                 }
                 li {
                     Link {
-                        class: "text-gray-700 transition hover:text-rose-500",
+                        class: "text-gray-700 dark:text-gray-200 transition hover:text-rose-500",
                         to: Routes::About {}, "About"
                     }
                 }
