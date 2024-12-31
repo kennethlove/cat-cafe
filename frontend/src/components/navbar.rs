@@ -18,7 +18,7 @@ pub fn Navbar() -> Element {
                 li {
                     Link {
                         class: "text-gray-700 dark:text-gray-200 transition hover:text-rose-500",
-                        to: Routes::CatList {}, "Cats"
+                        to: Routes::CatTable {}, "Cats"
                     }
                 }
                 li {

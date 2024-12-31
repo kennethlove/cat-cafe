@@ -1,16 +1,34 @@
-use axum::extract::Path;
+use axum::extract::{Path, Query};
 use axum::http::StatusCode;
 use axum::Json;
 use axum::response::IntoResponse;
 use surrealdb::RecordId;
 use uuid::Uuid;
+use serde::Deserialize;
 use shared::{Cat, NewCat};
 use crate::DB;
 
-pub async fn get_cats() -> Result<impl IntoResponse, StatusCode> {
+#[derive(Deserialize)]
+pub struct Sorting {
+    sort_by_field: String,
+    sort_direction: String,
+}
+
+pub async fn get_cats(sorting: Query<Sorting>) -> Result<impl IntoResponse, StatusCode> {
     DB.use_ns("cat-cafe").use_db("cats").await.expect("Failed to use cat database!");
     match DB.select("cat").await {
-        Ok(cats) => Ok((StatusCode::OK, Json::<Vec<Cat>>(cats))),
+        Ok(mut cats) => {
+            match sorting.sort_by_field.to_lowercase().as_str() {
+                "breed" => { cats.sort_by_key(|c: &Cat| c.breed.clone()); },
+                "microchip" => { cats.sort_by_key(|c: &Cat| c.microchip.clone()); },
+                _ => { cats.sort_by_key(|c: &Cat| c.name.clone()); },
+            }
+            match sorting.sort_direction.to_lowercase().as_str() {
+                "desc" => { cats.reverse(); },
+                _ => {}
+            }
+            Ok((StatusCode::OK, Json::<Vec<Cat>>(cats)))
+        },
         Err(e) => {
             eprintln!("{:?}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)

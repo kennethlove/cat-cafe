@@ -6,7 +6,7 @@ use crate::components::{
     Base,
     CatDetail,
     CatCreateForm,
-    CatList,
+    CatTable,
     Cats,
     Home,
     PageNotFound,
@@ -23,7 +23,7 @@ pub enum Routes {
         #[nest("/cats")]
             #[layout(Cats)]
                 #[route("/")]
-                CatList {},
+                CatTable {},
                 #[route("/:id")]
                 CatDetail { id: Uuid },
                 #[route("/create")]

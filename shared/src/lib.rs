@@ -1,5 +1,15 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+pub enum CatStatus {
+    #[default]
+    New,
+    Waiting,
+    InCafe,
+    Fostered,
+    Adopted,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq)]
 pub struct Cat {
     pub identifier: String,
@@ -7,6 +17,7 @@ pub struct Cat {
     pub breed: String,
     pub microchip: Option<String>,
     pub image: Option<String>,
+    pub status: CatStatus
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
