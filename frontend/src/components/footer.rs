@@ -6,7 +6,7 @@ pub fn Footer() -> Element {
         footer {
             class: "",
             div {
-                class: "mx-auto max-w-screen-xl px-6 py-8 md:px-4 lg:px-8",
+                class: "",
                 div {
                     class: "flex items-center justify-between",
                     div {

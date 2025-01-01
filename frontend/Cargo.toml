@@ -17,3 +17,4 @@ shared = { path = "../shared" }
 console_error_panic_hook = "0.1.7"
 dioxus-logger = "0.6.1"
 wasm-logger = "0.2.0"
+serde = { version = "1.0.214", features = ["derive"] }

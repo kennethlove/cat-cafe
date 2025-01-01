@@ -8,7 +8,7 @@ pub fn Header() -> Element {
         header {
             class: "mt-4",
             div {
-                class: "mx-auto flex items-center gap-8 px-6 md:px-4 lg:px-8",
+                class: "flex items-center gap-8",
                 a {
                     class: "block",
                     span {

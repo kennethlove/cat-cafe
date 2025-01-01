@@ -1,11 +1,37 @@
 use std::fmt::Display;
 use std::str::FromStr;
 use dioxus::prelude::*;
+use reqwest::{Client, Method, Request, RequestBuilder, Url};
 use shared::{Cat, CatStatus};
 use crate::routes::Routes;
 use uuid::Uuid;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+enum FilterByStatus {
+    #[default]
+    All,
+    New,
+    Waiting,
+    InCafe,
+    Fostered,
+    Adopted,
+}
+
+impl Display for FilterByStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FilterByStatus::All => write!(f, "all"),
+            FilterByStatus::New => write!(f, "new"),
+            FilterByStatus::Waiting => write!(f, "waiting"),
+            FilterByStatus::InCafe => write!(f, "in-cafe"),
+            FilterByStatus::Fostered => write!(f, "fostered"),
+            FilterByStatus::Adopted => write!(f, "adopted"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 enum SortByField {
     Name,
     Breed,
@@ -34,7 +60,7 @@ impl FromStr for SortByField {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 enum SortByDirection {
     Ascending,
     Descending,
@@ -101,14 +127,25 @@ pub fn CatTableHeader(props: CatTableHeaderProps) -> Element {
 pub fn CatTable() -> Element {
     let sort_by = use_signal(|| SortByField::Name);
     let sort_direction = use_signal(|| SortByDirection::Ascending);
+    let mut filter = use_signal(|| FilterByStatus::All);
 
     let cats_resource = use_resource(move || async move {
-        let mut url: String = format!("http://localhost:3000/cats?sort_by_field={}", sort_by.read().to_owned());
+        let url = Url::parse("http://localhost:3000/cats");
+        let client = Client::new();
+        let request = Request::new(Method::GET, url.ok().unwrap());
+        let req = RequestBuilder::from_parts(client, request);
+
+        let mut req = req.query(&[("sort_by_field", sort_by.read().to_owned())]);
+
         match sort_direction.read().to_owned() {
-            SortByDirection::Descending => { url.push_str("&sort_direction=desc")}
-            _ => { url.push_str("&sort_direction=asc") }
+            SortByDirection::Descending => { req = req.query(&[("sort_direction", "desc")]); }
+            _ => { req = req.query(&[("sort_direction", "asc")]) }
         }
-        let response = reqwest::get(url).await.unwrap();
+
+        let req = req.query(&[("filter_by_status", filter.read().to_owned())]);
+
+        let response = req.send().await.unwrap();
+
         let json = response.json::<Vec<Cat>>().await.unwrap();
         json
     });
@@ -131,80 +168,139 @@ pub fn CatTable() -> Element {
                 class: "text-2xl font-bold text-yellow-800 dark:text-yellow-800 tracking-wider",
                 "Cats"
             }
-            table {
-                class: "table table-zebra table-sm",
-                thead {
-                    tr {
-                        th {
-                            class: "w-16",
-                            input {
-                                r#type: "checkbox",
-                                name: "cat",
-                                value: "all",
-                                class: "checkbox",
-                            }
-                        }
-                        th {
-                            class: "w-16",
-                        }
-                        CatTableHeader { text: "Name", field: SortByField::Name, sort_by_signal: sort_by, sort_by_direction: sort_direction }
-                        CatTableHeader { text: "Breed", field: SortByField::Breed, sort_by_signal: sort_by, sort_by_direction: sort_direction }
-                        CatTableHeader { text: "Microchip #", field: SortByField::Microchip, sort_by_signal: sort_by, sort_by_direction: sort_direction }
-                    }
-                }
-                tbody {
-                    for cat in cats.clone().unwrap() {
+            div {
+                class: "flex flex-wrap flex-row gap-4 sm:flex-nowrap",
+                table {
+                    class: "table table-zebra table-sm w-3/4 grow",
+                    thead {
                         tr {
-                            td {
+                            th {
+                                class: "w-16",
                                 input {
                                     r#type: "checkbox",
                                     name: "cat",
-                                    value: "{cat.identifier}",
+                                    value: "all",
                                     class: "checkbox",
                                 }
                             }
-                            td {
-                                {
-                                    let status = match cat.clone().status {
-                                        CatStatus::New => { "primary" },
-                                        CatStatus::Waiting => { "secondary" },
-                                        CatStatus::InCafe => { "accent" },
-                                        CatStatus::Fostered => { "info" },
-                                        CatStatus::Adopted => { "success" },
-                                    };
-                                    rsx! {
-                                        div {
-                                            class: "avatar indicator",
+                            th {
+                                class: "w-16",
+                            }
+                            CatTableHeader { text: "Name", field: SortByField::Name, sort_by_signal: sort_by, sort_by_direction: sort_direction }
+                            CatTableHeader { text: "Breed", field: SortByField::Breed, sort_by_signal: sort_by, sort_by_direction: sort_direction }
+                            CatTableHeader { text: "Microchip #", field: SortByField::Microchip, sort_by_signal: sort_by, sort_by_direction: sort_direction }
+                        }
+                    }
+                    tbody {
+                        for cat in cats.clone().unwrap() {
+                            tr {
+                                td {
+                                    input {
+                                        r#type: "checkbox",
+                                        name: "cat",
+                                        value: "{cat.identifier}",
+                                        class: "checkbox",
+                                    }
+                                }
+                                td {
+                                    {
+                                        let status = match cat.clone().status {
+                                            CatStatus::New => { "primary" },
+                                            CatStatus::Waiting => { "secondary" },
+                                            CatStatus::InCafe => { "accent" },
+                                            CatStatus::Fostered => { "info" },
+                                            CatStatus::Adopted => { "success" },
+                                        };
+                                        rsx! {
                                             div {
-                                                class: "w-12 rounded-sm",
-                                                span {
-                                                    class: "indicator-item status status-lg status-{status}",
-                                                }
-                                                img {
-                                                    class: "",
-                                                    src: cat.clone().image.unwrap_or("https://placecats.com/96/96".to_string()),
-                                                    alt: "{cat.name}"
+                                                class: "avatar indicator",
+                                                div {
+                                                    class: "w-12 rounded-sm",
+                                                    span {
+                                                        class: "indicator-item status status-lg status-{status}",
+                                                        title: "{cat.clone().status}",
+                                                    }
+                                                    img {
+                                                        class: "",
+                                                        src: cat.clone().image.unwrap_or("https://placecats.com/96/96".to_string()),
+                                                        alt: "{cat.name}"
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
-                            }
-                            td {
-                                Link {
-                                    to: Routes::CatDetail {
-                                        id: Uuid::parse_str(cat.clone().identifier.as_str()).unwrap()
-                                    },
-                                    class: "link",
-                                    "{cat.name}"
+                                td {
+                                    Link {
+                                        to: Routes::CatDetail {
+                                            id: Uuid::parse_str(cat.clone().identifier.as_str()).unwrap()
+                                        },
+                                        class: "link",
+                                        "{cat.name}"
+                                    }
+                                }
+                                td {
+                                    "{cat.breed}"
+                                }
+                                td {
+                                    if !cat.microchip.is_some() { "None" }
+                                        else { "{&cat.microchip.as_ref().unwrap()}" }
                                 }
                             }
-                            td {
-                                "{cat.breed}"
+                        }
+                    }
+                }
+
+                aside {
+                    class: "shrink min-w-fit max-w-1/4 sm:w-full",
+                    section {
+                        class: "p-2 bg-base-200 border-base-300 text-base-content text-sm rounded-sm",
+                        h1 {
+                            class: "font-bold",
+                            "Filter by status"
+                        }
+                        ul {
+                            li {
+                                class: {format!("link {}", if filter.read().clone() == FilterByStatus::All { "text-primary" } else { "" })},
+                                onclick: move |_| {
+                                    filter.set(FilterByStatus::All);
+                                },
+                                "All"
                             }
-                            td {
-                                if !cat.microchip.is_some() { "None" }
-                                    else { "{&cat.microchip.as_ref().unwrap()}" }
+                            li {
+                                class: {format!("link {}", if filter.read().clone() == FilterByStatus::New { "text-primary" } else { "" })},
+                                onclick: move |_| {
+                                    filter.set(FilterByStatus::New);
+                                },
+                                "New"
+                            }
+                            li {
+                                class: {format!("link {}", if filter.read().clone() == FilterByStatus::Waiting { "text-primary" } else { "" })},
+                                onclick: move |_| {
+                                    filter.set(FilterByStatus::Waiting);
+                                },
+                                "Waiting"
+                            }
+                            li {
+                                class: {format!("link {}", if filter.read().clone() == FilterByStatus::InCafe { "text-primary" } else { "" })},
+                                onclick: move |_| {
+                                    filter.set(FilterByStatus::InCafe);
+                                },
+                                "In a Cafe"
+                            }
+                            li {
+                                class: {format!("link {}", if filter.read().clone() == FilterByStatus::Fostered { "text-primary" } else { "" })},
+                                onclick: move |_| {
+                                    filter.set(FilterByStatus::Fostered);
+                                },
+                                "Fostered"
+                            }
+                            li {
+                                class: {format!("link {}", if filter.read().clone() == FilterByStatus::Adopted { "text-primary" } else { "" })},
+                                onclick: move |_| {
+                                    filter.set(FilterByStatus::Adopted);
+                                },
+                                "Adopted"
                             }
                         }
                     }

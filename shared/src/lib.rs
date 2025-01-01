@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
@@ -8,6 +9,18 @@ pub enum CatStatus {
     InCafe,
     Fostered,
     Adopted,
+}
+
+impl Display for CatStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CatStatus::New => write!(f, "new"),
+            CatStatus::Waiting => write!(f, "waiting"),
+            CatStatus::InCafe => write!(f, "in a cafe"),
+            CatStatus::Fostered => write!(f, "fostered"),
+            CatStatus::Adopted => write!(f, "adopted"),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq)]

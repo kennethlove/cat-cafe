@@ -5,7 +5,7 @@ use axum::response::IntoResponse;
 use surrealdb::RecordId;
 use uuid::Uuid;
 use serde::Deserialize;
-use shared::{Cat, NewCat};
+use shared::{Cat, CatStatus, NewCat};
 use crate::DB;
 
 #[derive(Deserialize)]
@@ -14,7 +14,12 @@ pub struct Sorting {
     sort_direction: String,
 }
 
-pub async fn get_cats(sorting: Query<Sorting>) -> Result<impl IntoResponse, StatusCode> {
+#[derive(Deserialize)]
+pub struct Filtering {
+    filter_by_status: String,
+}
+
+pub async fn get_cats(sorting: Query<Sorting>, filtering: Query<Filtering>) -> Result<impl IntoResponse, StatusCode> {
     DB.use_ns("cat-cafe").use_db("cats").await.expect("Failed to use cat database!");
     match DB.select("cat").await {
         Ok(mut cats) => {
@@ -27,6 +32,24 @@ pub async fn get_cats(sorting: Query<Sorting>) -> Result<impl IntoResponse, Stat
                 "desc" => { cats.reverse(); },
                 _ => {}
             }
+            let cats = match filtering.filter_by_status.to_lowercase().as_str() {
+                "new" => {
+                    cats.iter().filter(|c| c.status == CatStatus::New).cloned().collect::<Vec<Cat>>()
+                },
+                "waiting" => {
+                    cats.iter().filter(|c| c.status == CatStatus::Waiting).cloned().collect::<Vec<Cat>>()
+                },
+                "in-cafe" => {
+                    cats.iter().filter(|c| c.status == CatStatus::InCafe).cloned().collect::<Vec<Cat>>()
+                },
+                "fostered" => {
+                    cats.iter().filter(|c| c.status == CatStatus::Fostered).cloned().collect::<Vec<Cat>>()
+                },
+                "adopted" => {
+                    cats.iter().filter(|c| c.status == CatStatus::Adopted).cloned().collect::<Vec<Cat>>()
+                },
+                _ => cats.clone(),
+            };
             Ok((StatusCode::OK, Json::<Vec<Cat>>(cats)))
         },
         Err(e) => {
