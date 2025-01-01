@@ -2498,6 +2498,9 @@
   .h-0 {
     height: calc(var(--spacing) * 0);
   }
+  .h-4 {
+    height: calc(var(--spacing) * 4);
+  }
   .h-8 {
     height: calc(var(--spacing) * 8);
   }

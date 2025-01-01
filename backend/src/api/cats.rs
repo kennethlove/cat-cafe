@@ -39,7 +39,7 @@ pub async fn get_cats(sorting: Query<Sorting>, filtering: Query<Filtering>) -> R
                 "waiting" => {
                     cats.iter().filter(|c| c.status == CatStatus::Waiting).cloned().collect::<Vec<Cat>>()
                 },
-                "in-cafe" => {
+                "incafe" => {
                     cats.iter().filter(|c| c.status == CatStatus::InCafe).cloned().collect::<Vec<Cat>>()
                 },
                 "fostered" => {
