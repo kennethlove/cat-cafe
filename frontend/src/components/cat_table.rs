@@ -128,6 +128,8 @@ pub fn CatTable() -> Element {
     let sort_by = use_signal(|| SortByField::Name);
     let sort_direction = use_signal(|| SortByDirection::Ascending);
     let mut filter = use_signal(|| FilterByStatus::All);
+    let mut check_all = use_signal(|| false);
+    let mut edit_modal_signal: Signal<Option<Cat>> = use_context();
 
     let cats_resource = use_resource(move || async move {
         let url = Url::parse("http://localhost:3000/cats");
@@ -181,6 +183,10 @@ pub fn CatTable() -> Element {
                                     name: "cat",
                                     value: "all",
                                     class: "checkbox",
+                                    onchange: move |_| {
+                                        let current = check_all.read().clone();
+                                        check_all.set(!current);
+                                    }
                                 }
                             }
                             th {
@@ -200,6 +206,7 @@ pub fn CatTable() -> Element {
                                         name: "cat",
                                         value: "{cat.identifier}",
                                         class: "checkbox",
+                                        checked: check_all.read().clone()
                                     }
                                 }
                                 td {
@@ -231,13 +238,20 @@ pub fn CatTable() -> Element {
                                     }
                                 }
                                 td {
-                                    Link {
-                                        to: Routes::CatDetail {
-                                            id: Uuid::parse_str(cat.clone().identifier.as_str()).unwrap()
+                                    span {
+                                        onclick: move |_| {
+                                            edit_modal_signal.set(Some(cat.clone()));
                                         },
                                         class: "link",
                                         "{cat.name}"
                                     }
+                                    // Link {
+                                    //     to: Routes::CatDetail {
+                                    //         id: Uuid::parse_str(cat.clone().identifier.as_str()).unwrap()
+                                    //     },
+                                    //     class: "link",
+                                    //     "{cat.name}"
+                                    // }
                                 }
                                 td {
                                     "{cat.breed}"

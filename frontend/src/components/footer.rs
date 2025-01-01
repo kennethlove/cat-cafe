@@ -17,7 +17,7 @@ pub fn Footer() -> Element {
                         }
                     }
                     p {
-                        class: "mt-4 text-center text-sm text-rose-600 lg:mt-0 lg:text-right",
+                        class: "mt-4 text-center text-sm text-content lg:mt-0 lg:text-right",
                         "Copyright © 2025. All rights reserved."
                     }
                 }

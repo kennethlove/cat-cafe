@@ -28,4 +28,10 @@ mod input_with_label;
 pub use input_with_label::*;
 mod button;
 pub use button::*;
+mod edit_modal;
+pub use edit_modal::*;
+
+mod cat_form;
+pub use cat_form::*;
+
 //

@@ -5,6 +5,7 @@ use dioxus::prelude::*;
 use dioxus_logger::tracing;
 use reqwest::multipart::Part;
 use reqwest::multipart::Form;
+use reqwest::{Method, Url};
 use uuid::Uuid;
 use shared::{Cat, NewCat};
 use crate::components::InputWithLabel;
@@ -13,11 +14,25 @@ use crate::routes::Routes;
 use shared::UploadedFile;
 
 #[component]
-pub fn CatCreateForm() -> Element {
-    let cat = use_signal(||Cat::default());
-    let mut name_signal = use_signal(||cat.read().name.clone());
-    let mut breed_signal = use_signal(||cat.read().breed.clone());
-    let mut microchip_signal = use_signal(||cat.read().microchip.clone().unwrap_or_default());
+pub fn CatForm() -> Element {
+    let cat: Signal<Option<Cat>> = use_context();
+    tracing::info!("cat: {:?}", &cat);
+
+    let mut name_signal = use_signal(|| {
+        if let Some(cat) = cat.read().clone() {
+            cat.name.clone()
+        } else { "".to_string() }
+    });
+    let mut breed_signal = use_signal(|| {
+        if let Some(cat) = cat.read().clone() {
+            cat.breed.clone()
+        } else { "".to_string() }
+    });
+    let mut microchip_signal = use_signal(|| {
+        if let Some(cat) = cat.read().clone() {
+            cat.microchip.clone().unwrap_or_default()
+        } else { "".to_string() }
+    });
     let mut files_uploaded = use_signal(|| Vec::new() as Vec<UploadedFile>);
     let mut image_path = use_signal(String::new);
 
@@ -40,17 +55,17 @@ pub fn CatCreateForm() -> Element {
     };
 
     rsx! {
-        h2 {
-            class: "col-span-2 text-2xl",
-            "Create a new cat"
-        }
         form {
             enctype: "multipart/form-data",
             onsubmit: move |_event| {
                 let name = name_signal.read().clone();
                 let breed: String = breed_signal.read().clone();
                 let microchip: String = microchip_signal.read().clone();
-                let identifier = Uuid::new_v4().to_string();
+                let identifier = {
+                    if let Some(cat) = cat.read().clone() {
+                        cat.identifier.clone()
+                    } else { Uuid::new_v4().to_string() }
+                };
                 let url = format!("http://localhost:3000/cats/{}/images", identifier.clone());
 
                 if !files_uploaded.read().is_empty() {
@@ -96,7 +111,20 @@ pub fn CatCreateForm() -> Element {
 
                             let value = new_cat.clone();
 
-                            let client = reqwest::Client::new();
+                            let url = {
+                                if let Some(cat) = cat.read().clone() {
+                                    Url::parse("http://localhost:3000/cats/{identifier}")
+                                } else { Url::parse("http://localhos:3000/cats") }
+                            };
+
+                            let method = {
+                                if let Some(cat) = cat.read().clone() { Method::PUT } else { Method::POST }
+                            };
+
+                            let req = reqwest::Request::new(method, url.ok().unwrap());
+
+                            let request = reqwest::RequestBuilder::from_parts(reqwest::Client::new(), req);
+
                             let response = client.post("http://localhost:3000/cats")
                                 .json(&value)
                                 .send()
@@ -106,7 +134,7 @@ pub fn CatCreateForm() -> Element {
                                 let nav = navigator();
                                 nav.push(Routes::CatDetail { id: Uuid::parse_str(&cat.identifier.as_str()).unwrap() });
                             } else {
-                                tracing::info!("Failed to create cat");
+                                tracing::info!("Failed to create/update cat");
                             }
                         }
                     });
@@ -155,7 +183,7 @@ pub fn CatCreateForm() -> Element {
             button {
                 class: "btn btn-primary mt-4",
                 r#type: "submit",
-                "Create"
+                "Save"
             }
         }
     }
